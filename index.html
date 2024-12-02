@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Google Search to JSON</title>
+  </head>
+  <body>
+    <h1>Google Search to JSON</h1>
+    <input type="text" id="searchQuery" placeholder="Enter search term" />
+    <button id="searchButton">Search</button>
+    <button id="downloadJson" disabled>Download JSON</button>
+    <h4 id="statusText">Click search to start search</h4>
+
+    <script>
+      document.getElementById("searchButton").onclick = async () => {
+        const statusText = document.getElementById("statusText");
+        statusText.textContent = "Wait...";
+        const downloadButton = document.getElementById("downloadJson");
+        downloadButton.disabled = true;
+
+        const query = document.getElementById("searchQuery").value;
+        const googleSearchUrl = `https://www.google.com/search?q=${query}`;
+        const proxyUrl =
+          "https://api.allorigins.win/get?url=" +
+          encodeURIComponent(googleSearchUrl);
+        const response = await fetch(proxyUrl);
+        const data = await response.json();
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(data.contents, "text/text/html ");
+
+        const results = [];
+        const mainContainer = doc.querySelector("div#main");
+        const divElements = mainContainer.querySelectorAll("div");
+
+        divElements.forEach((div) => {
+          const titleDiv = div.querySelector("div > div > h3");
+          const linkElement = div.querySelector("a");
+          if (linkElement && titleDiv) {
+            results.push({
+              title: titleDiv.textContent,
+              link: linkElement.href.split("&")[0].split("q=")[1],
+            });
+          }
+        });
+
+        downloadButton.disabled = false;
+        statusText.textContent = "Ready for downloading";
+        downloadButton.onclick = () => {
+          const blob = new Blob([JSON.stringify(results, null, 2)], {
+            type: "application/json",
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "search_results.json";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        };
+        console.log(results);
+      };
+    </script>
+  </body>
+</html>
